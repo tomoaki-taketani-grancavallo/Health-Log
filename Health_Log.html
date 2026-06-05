@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Health Log — ともあき</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0e0f11;
+    --surface: #16181c;
+    --surface2: #1e2026;
+    --border: #2a2d35;
+    --accent: #7fff6e;
+    --accent2: #4fc3f7;
+    --accent3: #ff7eb3;
+    --accent4: #ffb347;
+    --text: #e8eaf0;
+    --text2: #8b8f9e;
+    --text3: #555a6b;
+    --danger: #ff5a5a;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 16px 20px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--text2);
+    letter-spacing: 0.08em;
+  }
+  .header-date {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    background: rgba(127,255,110,0.08);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(127,255,110,0.2);
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    padding: 16px 20px 0;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+  }
+  .tab {
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    color: var(--text3);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .tab.active {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+  }
+  .tab:hover:not(.active) { color: var(--text2); }
+
+  /* ── PANELS ── */
+  .panel { display: none; padding: 20px; }
+  .panel.active { display: block; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .card-title {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text2);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  /* ── FORM ── */
+  .form-section { margin-bottom: 6px; }
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .form-row.single { grid-template-columns: 1fr; }
+  .form-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label {
+    font-size: 11px;
+    color: var(--text2);
+    font-weight: 500;
+  }
+  .field input, .field select, .field textarea {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--accent);
+  }
+  .field textarea { resize: vertical; min-height: 60px; }
+  .field input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+  .checkbox-row span { font-size: 13px; color: var(--text); }
+
+  /* score hint */
+  .score-hint {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 3px;
+    font-family: 'DM Mono', monospace;
+  }
+  .score-hint.good { color: var(--accent); }
+  .score-hint.warn { color: var(--accent4); }
+  .score-hint.bad  { color: var(--danger); }
+
+  /* ── SUBMIT ── */
+  .btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: #0a0c08;
+    border: none;
+    border-radius: var(--radius);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: opacity 0.2s, transform 0.1s;
+    margin-top: 8px;
+  }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-secondary {
+    padding: 10px 18px;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 10px 20px;
+    font-size: 13px;
+    color: var(--text);
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    z-index: 999;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { border-color: var(--accent); color: var(--accent); }
+  .toast.error   { border-color: var(--danger); color: var(--danger); }
+
+  /* ── DASHBOARD ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+  }
+  .kpi-label { font-size: 10px; color: var(--text2); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+  .kpi-value { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; color: var(--text); }
+  .kpi-value.accent { color: var(--accent); }
+  .kpi-sub { font-size: 11px; color: var(--text3); margin-top: 3px; font-family: 'DM Mono', monospace; }
+  .kpi-sub.good { color: var(--accent); }
+  .kpi-sub.bad  { color: var(--danger); }
+
+  /* progress bar */
+  .progress-wrap { margin-bottom: 12px; }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text2);
+    margin-bottom: 6px;
+  }
+  .progress-bar {
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--accent);
+    transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  /* chart container */
+  .chart-wrap {
+    position: relative;
+    height: 180px;
+    margin-top: 8px;
+  }
+  .chart-wrap.tall { height: 220px; }
+
+  /* weekly table */
+  .week-table { width: 100%; border-collapse: collapse; }
+  .week-table th {
+    font-size: 10px;
+    color: var(--text3);
+    text-align: center;
+    padding: 4px 2px;
+    font-weight: 400;
+    font-family: 'DM Mono', monospace;
+  }
+  .week-table td {
+    text-align: center;
+    padding: 5px 2px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+  }
+  .dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+  }
+  .dot.filled { background: var(--accent); }
+  .dot.partial { background: var(--accent4); }
+
+  /* ── ANALYSIS ── */
+  .api-key-wrap {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .api-key-wrap input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    outline: none;
+  }
+  .api-key-wrap input:focus { border-color: var(--accent2); }
+
+  .analysis-output {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--text);
+    white-space: pre-wrap;
+    min-height: 120px;
+  }
+  .analysis-output.loading { color: var(--text3); }
+  .analysis-output h3 { color: var(--accent); font-size: 13px; margin: 12px 0 6px; }
+  .analysis-output p { margin-bottom: 8px; }
+  .analysis-output .grade {
+    font-family: 'DM Mono', monospace;
+    font-size: 32px;
+    font-weight: 500;
+    color: var(--accent);
+    display: block;
+    text-align: center;
+    padding: 12px 0;
+  }
+
+  /* week selector */
+  .week-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .week-selector button {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    width: 30px; height: 30px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .week-selector button:hover { border-color: var(--accent2); color: var(--accent2); }
+  .week-label {
+    flex: 1;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text2);
+    text-align: center;
+  }
+
+  .notion-key-note {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 6px;
+    line-height: 1.6;
+  }
+
+  /* loading spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  /* settings */
+  .settings-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-label { font-size: 13px; color: var(--text); }
+  .settings-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* scroll */
+  .panel { max-height: calc(100vh - 100px); overflow-y: auto; }
+  .panel::-webkit-scrollbar { width: 4px; }
+  .panel::-webkit-scrollbar-track { background: transparent; }
+  .panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  @media (min-width: 640px) {
+    body { max-width: 600px; margin: 0 auto; }
+    .kpi-grid { grid-template-columns: repeat(4, 1fr); }
+    .form-row { grid-template-columns: repeat(3, 1fr); }
+    .form-row.single { grid-template-columns: 1fr; }
+    .form-row.double { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="header-title">HEALTH LOG</span>
+  <span class="header-date" id="headerDate">Loading...</span>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('input')">📝 記録</button>
+  <button class="tab" onclick="switchTab('dashboard')">📊 ダッシュボード</button>
+  <button class="tab" onclick="switchTab('analysis')">🤖 週次分析</button>
+  <button class="tab" onclick="switchTab('settings')">⚙️ 設定</button>
+</div>
+
+<!-- ===================== TAB: 記録 ===================== -->
+<div class="panel active" id="panel-input">
+
+  <div class="card">
+    <div class="card-title">⚖️ 体型・体重</div>
+    <div class="form-row double">
+      <div class="field">
+        <label>体重 (kg)</label>
+        <input type="number" id="weight" step="0.1" placeholder="76.2">
+        <div class="score-hint" id="weightHint"></div>
+      </div>
+      <div class="field">
+        <label>体脂肪率 (%)</label>
+        <input type="number" id="bodyfat" step="0.1" placeholder="—">
+        <div class="score-hint" id="fatHint"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🌙 睡眠</div>
+    <div class="form-row double">
+      <div class="field">
+        <label>就寝時刻</label>
+        <input type="time" id="bedtime" value="23:30">
+      </div>
+      <div class="field">
+        <label>起床時刻</label>
+        <input type="time" id="waketime" value="07:00">
+      </div>
+    </div>
+    <div class="form-row single">
+      <div class="field">
+        <label>睡眠の質</label>
+        <select id="sleepQuality" onchange="updateScoreHint('sleepQuality','sleepHint')">
+          <option value="">選択してください</option>
+          <option value="5">5 — 熟睡。スッキリ目覚めた</option>
+          <option value="4">4 — 概ね良く眠れた</option>
+          <option value="3">3 — 普通</option>
+          <option value="2">2 — 途中で目が覚めた・浅かった</option>
+          <option value="1">1 — ほぼ眠れなかった</option>
+        </select>
+        <div class="score-hint" id="sleepHint"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🧠 メンタル・ストレス</div>
+    <div class="form-row double">
+      <div class="field">
+        <label>気分スコア (1〜10)</label>
+        <select id="mood" onchange="updateScoreHint('mood','moodHint')">
+          <option value="">選択</option>
+          <option value="10">10 — 最高に充実</option>
+          <option value="9">9 — 非常に良い</option>
+          <option value="8">8 — 良い</option>
+          <option value="7">7 — やや良い</option>
+          <option value="6">6 — 普通よりやや良い</option>
+          <option value="5">5 — 普通</option>
+          <option value="4">4 — やや落ちている</option>
+          <option value="3">3 — 気分が落ちている</option>
+          <option value="2">2 — かなり落ち込んでいる</option>
+          <option value="1">1 — 非常に落ち込んでいる</option>
+        </select>
+        <div class="score-hint" id="moodHint"></div>
+      </div>
+      <div class="field">
+        <label>ストレスレベル (1〜5)</label>
+        <select id="stress" onchange="updateScoreHint('stress','stressHint')">
+          <option value="">選択</option>
+          <option value="1">1 — 全くなし・穏やか</option>
+          <option value="2">2 — ほぼ問題なし</option>
+          <option value="3">3 — 多少ストレスあり</option>
+          <option value="4">4 — かなりストレスを感じた</option>
+          <option value="5">5 — 限界に近い</option>
+        </select>
+        <div class="score-hint" id="stressHint"></div>
+      </div>
+    </div>
+    <div class="form-row single">
+      <div class="field">
+        <label class="checkbox-row" for="meditation">
+          <input type="checkbox" id="meditation">
+          <span>🧘 瞑想した</span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏋️ 運動</div>
+    <div class="form-row single">
+      <div class="field">
+        <label class="checkbox-row" for="exercised">
+          <input type="checkbox" id="exercised" onchange="toggleExercise()">
+          <span>💪 運動した</span>
+        </label>
+      </div>
+    </div>
+    <div id="exerciseFields" style="display:none; margin-top:12px;">
+      <!-- 種目ヘッダー -->
+      <div style="display:grid; grid-template-columns:2fr 1fr 1fr 28px; gap:6px; margin-bottom:4px; padding:0 2px;">
+        <div style="font-size:10px;color:var(--text3);">種類・内容</div>
+        <div style="font-size:10px;color:var(--text3);">時間(分)</div>
+        <div style="font-size:10px;color:var(--text3);">回数(回/set)</div>
+        <div></div>
+      </div>
+      <!-- 種目行 1〜5 -->
+      <div id="exerciseRows">
+        <div class="ex-row" style="display:grid; grid-template-columns:2fr 1fr 1fr 28px; gap:6px; margin-bottom:6px;">
+          <input type="text" class="ex-type" placeholder="例: ジョギング" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;color:var(--text);font-size:13px;outline:none;">
+          <input type="number" class="ex-min" placeholder="30" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;color:var(--text);font-size:13px;outline:none;">
+          <input type="text" class="ex-reps" placeholder="3×10" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;color:var(--text);font-size:13px;outline:none;">
+          <div style="display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:16px;">—</div>
+        </div>
+      </div>
+      <button type="button" onclick="addExerciseRow()" id="addExBtn"
+        style="background:none;border:1px dashed var(--border);border-radius:var(--radius-sm);padding:8px;width:100%;color:var(--text3);font-size:12px;cursor:pointer;margin-bottom:10px;">
+        ＋ 種目を追加（最大5種目）
+      </button>
+    </div>
+    <div class="form-row single" style="margin-top:10px;">
+      <div class="field">
+        <label>歩数</label>
+        <input type="number" id="steps" placeholder="8000">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🍽️ 食事・水分</div>
+    <div class="form-row double">
+      <div class="field">
+        <label>水分摂取量 (L)</label>
+        <input type="number" id="water" step="0.1" placeholder="2.0">
+      </div>
+      <div class="field">
+        <label>食事の質 (1〜5)</label>
+        <select id="foodQuality" onchange="updateScoreHint('foodQuality','foodHint')">
+          <option value="">選択</option>
+          <option value="5">5 — バランス◎ 暴食なし</option>
+          <option value="4">4 — 概ねバランス良い</option>
+          <option value="3">3 — 普通（コンビニ・外食）</option>
+          <option value="2">2 — 偏食・食べ過ぎ・飲み会</option>
+          <option value="1">1 — ジャンク食・ほぼ食べなかった</option>
+        </select>
+        <div class="score-hint" id="foodHint"></div>
+      </div>
+    </div>
+    <div class="form-row double">
+      <div class="field">
+        <label>カロリー (kcal)</label>
+        <input type="number" id="calories" placeholder="2000">
+      </div>
+      <div class="field">
+        <label>アルコール</label>
+        <select id="alcohol">
+          <option value="なし">なし</option>
+          <option value="少量">少量（1〜2杯）</option>
+          <option value="中程度">中程度（3〜4杯）</option>
+          <option value="多め">多め（5杯以上）</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row single">
+      <div class="field">
+        <label>食事内容メモ</label>
+        <textarea id="foodMemo" placeholder="朝: 〇〇、昼: 〇〇、夜: 〇〇"></textarea>
+      </div>
+    </div>
+    <div class="form-row single">
+      <div class="field">
+        <label>サプリ記録</label>
+        <input type="text" id="supplements" placeholder="例: ビタミンD、プロテイン">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💊 身体コンディション</div>
+    <div class="form-row double">
+      <div class="field">
+        <label>体調スコア (1〜5)</label>
+        <select id="condition" onchange="updateScoreHint('condition','conditionHint')">
+          <option value="">選択</option>
+          <option value="5">5 — 絶好調・何でもできる</option>
+          <option value="4">4 — 良好</option>
+          <option value="3">3 — 普通</option>
+          <option value="2">2 — だるい・頭痛など</option>
+          <option value="1">1 — 体調不良・病気気味</option>
+        </select>
+        <div class="score-hint" id="conditionHint"></div>
+      </div>
+      <div class="field">
+        <label>安静時心拍数 (bpm)</label>
+        <input type="number" id="heartRate" placeholder="60">
+        <div class="score-hint" id="hrHint"></div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-primary" id="submitBtn" onclick="submitLog()">
+    ✅ Notionに保存する
+  </button>
+  <p style="text-align:center; font-size:11px; color:var(--text3); margin-top:8px;">設定タブでNotionのAPIキーとDB IDを入力してください</p>
+
+</div><!-- /panel-input -->
+
+<!-- ===================== TAB: ダッシュボード ===================== -->
+<div class="panel" id="panel-dashboard">
+
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    <span style="font-size:12px; color:var(--text2);">最終更新: <span id="lastUpdated">—</span></span>
+    <button class="btn-secondary" onclick="loadDashboard()">🔄 更新</button>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-label">体重</div>
+      <div class="kpi-value" id="kpiWeight">—</div>
+      <div class="kpi-sub" id="kpiWeightSub">目標: 60.0 kg</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">体脂肪率</div>
+      <div class="kpi-value" id="kpiFat">—</div>
+      <div class="kpi-sub" id="kpiFatSub">目標: 15%</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">BMI</div>
+      <div class="kpi-value" id="kpiBMI">—</div>
+      <div class="kpi-sub" id="kpiBMISub">目標: 23.4</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">今週の運動</div>
+      <div class="kpi-value accent" id="kpiExercise">—</div>
+      <div class="kpi-sub">/ 7日</div>
+    </div>
+  </div>
+
+  <!-- 目標進捗バー -->
+  <div class="card">
+    <div class="card-title">🎯 目標進捗</div>
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span>体重</span>
+        <span id="weightProgress">76.2 kg → 60.0 kg</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="weightBar" style="width:0%"></div></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span>体脂肪率</span>
+        <span id="fatProgress">未計測 → 15%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="fatBar" style="width:0%; background: var(--accent2)"></div></div>
+    </div>
+  </div>
+
+  <!-- 今週のサマリー -->
+  <div class="card">
+    <div class="card-title">📅 今週（月〜日）のサマリー</div>
+    <table class="week-table">
+      <thead>
+        <tr>
+          <th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th><th>日</th>
+        </tr>
+      </thead>
+      <tbody id="weekGrid">
+        <tr>
+          <td><span class="dot" id="wd0"></span></td>
+          <td><span class="dot" id="wd1"></span></td>
+          <td><span class="dot" id="wd2"></span></td>
+          <td><span class="dot" id="wd3"></span></td>
+          <td><span class="dot" id="wd4"></span></td>
+          <td><span class="dot" id="wd5"></span></td>
+          <td><span class="dot" id="wd6"></span></td>
+        </tr>
+        <tr id="weightRow">
+          <td colspan="7" style="font-size:10px;color:var(--text3);padding-top:4px;">記録なし</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top:10px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;" id="weekStats">
+    </div>
+  </div>
+
+  <!-- 体重グラフ -->
+  <div class="card">
+    <div class="card-title">📈 体重推移 (30日)</div>
+    <div class="chart-wrap">
+      <canvas id="weightChart"></canvas>
+    </div>
+  </div>
+
+  <!-- 睡眠・気分グラフ -->
+  <div class="card">
+    <div class="card-title">😴 睡眠 × 気分 (14日)</div>
+    <div class="chart-wrap">
+      <canvas id="moodChart"></canvas>
+    </div>
+  </div>
+
+  <p style="text-align:center; font-size:11px; color:var(--text3); margin-top:4px;">Notionの健康管理ログDBからデータを取得します</p>
+
+</div><!-- /panel-dashboard -->
+
+<!-- ===================== TAB: 週次分析 ===================== -->
+<div class="panel" id="panel-analysis">
+
+  <div class="week-selector">
+    <button onclick="changeWeek(-1)">‹</button>
+    <div class="week-label" id="weekLabel">今週 (月〜日)</div>
+    <button onclick="changeWeek(1)">›</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 週次データ（Notionから自動取得）</div>
+    <div id="weekDataPreview" style="font-family:'DM Mono',monospace; font-size:11px; color:var(--text2); line-height:2;">
+      「分析を実行」ボタンを押すと自動取得します
+    </div>
+  </div>
+
+  <button class="btn-primary" onclick="runWeeklyAnalysis()" id="analyzeBtn">
+    🤖 今週を分析する
+  </button>
+
+  <div class="card" style="margin-top:12px;" id="analysisCard">
+    <div class="card-title">🧠 AI分析結果</div>
+    <div class="analysis-output" id="analysisOutput">
+      分析を実行すると、ここに結果が表示されます。
+    </div>
+  </div>
+
+</div><!-- /panel-analysis -->
+
+<!-- ===================== TAB: 設定 ===================== -->
+<div class="panel" id="panel-settings">
+
+  <div class="card">
+    <div class="card-title">🔑 Notion連携設定</div>
+
+    <div class="field" style="margin-bottom:12px;">
+      <label>Notion Internal Integration Token</label>
+      <input type="password" id="notionToken" placeholder="secret_xxxxxxxxxxxx">
+      <p class="notion-key-note">Notion → 設定 → インテグレーション → 内部インテグレーションを作成 で取得</p>
+    </div>
+
+    <div class="field" style="margin-bottom:12px;">
+      <label>健康管理ログ DB ID</label>
+      <input type="text" id="notionDbId" placeholder="092d92ac6f4c4907a5201f1fe5e923d1">
+      <p class="notion-key-note">DBのURLの末尾32文字（ハイフン除く）</p>
+    </div>
+
+    <button class="btn-secondary" onclick="saveSettings()">保存する</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🤖 Claude API設定</div>
+    <div class="field" style="margin-bottom:12px;">
+      <label>Anthropic API Key（週次分析用）</label>
+      <input type="password" id="claudeApiKey" placeholder="sk-ant-xxxxxxxxxxxx">
+      <p class="notion-key-note">console.anthropic.com で取得。週次分析タブでのみ使用します。</p>
+    </div>
+    <button class="btn-secondary" onclick="saveSettings()">保存する</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚖️ 目標値</div>
+    <div class="form-row double">
+      <div class="field">
+        <label>目標体重 (kg)</label>
+        <input type="number" id="goalWeight" value="60.0" step="0.1">
+      </div>
+      <div class="field">
+        <label>目標体脂肪率 (%)</label>
+        <input type="number" id="goalFat" value="15" step="0.1">
+      </div>
+    </div>
+    <div class="form-row double">
+      <div class="field">
+        <label>身長 (cm)</label>
+        <input type="number" id="height" value="160" step="0.1">
+      </div>
+      <div class="field">
+        <label>開始体重 (kg)（進捗計算用）</label>
+        <input type="number" id="startWeight" value="76.2" step="0.1">
+      </div>
+    </div>
+    <button class="btn-secondary" onclick="saveSettings()">保存する</button>
+  </div>
+
+</div><!-- /panel-settings -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ───────────────────────────────────────────────
+// STATE
+// ───────────────────────────────────────────────
+let settings = {
+  notionToken: '',
+  notionDbId: '092d92ac6f4c4907a5201f1fe5e923d1',
+  claudeApiKey: '',
+  goalWeight: 60.0,
+  goalFat: 15,
+  height: 160,
+  startWeight: 76.2
+};
+let cachedLogs = [];
+let weekOffset = 0;
+let weightChartObj = null;
+let moodChartObj = null;
+
+// ───────────────────────────────────────────────
+// INIT
+// ───────────────────────────────────────────────
+function init() {
+  // load settings from storage
+  try {
+    const saved = localStorage.getItem('health_settings');
+    if (saved) settings = { ...settings, ...JSON.parse(saved) };
+  } catch(e) {}
+
+  // populate settings fields
+  document.getElementById('notionToken').value = settings.notionToken || '';
+  document.getElementById('notionDbId').value = settings.notionDbId || '';
+  document.getElementById('claudeApiKey').value = settings.claudeApiKey || '';
+  document.getElementById('goalWeight').value = settings.goalWeight;
+  document.getElementById('goalFat').value = settings.goalFat;
+  document.getElementById('height').value = settings.height;
+  document.getElementById('startWeight').value = settings.startWeight;
+
+  // set today's date in header
+  updateHeaderDate();
+  setInterval(updateHeaderDate, 60000);
+
+  // pre-fill bedtime defaults based on time
+  const now = new Date();
+  const h = now.getHours();
+  if (h >= 5 && h < 12) {
+    // morning: wake already happened
+  }
+}
+
+function updateHeaderDate() {
+  const d = new Date();
+  const days = ['日','月','火','水','木','金','土'];
+  document.getElementById('headerDate').textContent =
+    `${d.getMonth()+1}/${d.getDate()}（${days[d.getDay()]}）`;
+}
+
+// ───────────────────────────────────────────────
+// TABS
+// ───────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'analysis') updateWeekLabel();
+}
+
+// ───────────────────────────────────────────────
+// SCORE HINTS
+// ───────────────────────────────────────────────
+const scoreLabels = {
+  sleepQuality: ['','最悪','浅い','普通','良い','熟睡'],
+  mood: ['','最悪','かなり落ち込','落ち込み','やや落ち','普通','やや良','良い','良い','非常に良い','最高！'],
+  stress: ['','穏やか✨','ほぼなし','少しあり','かなりあり⚠️','限界🚨'],
+  foodQuality: ['','最悪','悪い','普通','良い','最高✨'],
+  condition: ['','不調🤒','だるい','普通','良好','絶好調🔥'],
+};
+const scoreColors = {
+  sleepQuality: ['','bad','bad','','good','good'],
+  mood: ['','bad','bad','bad','bad','','','good','good','good','good'],
+  stress: ['','good','good','','warn','bad'],
+  foodQuality: ['','bad','bad','','good','good'],
+  condition: ['','bad','bad','','good','good'],
+};
+
+function updateScoreHint(selectId, hintId) {
+  const v = parseInt(document.getElementById(selectId).value);
+  const hint = document.getElementById(hintId);
+  if (!v || !scoreLabels[selectId]) { hint.textContent = ''; return; }
+  hint.textContent = scoreLabels[selectId][v] || '';
+  hint.className = 'score-hint ' + (scoreColors[selectId][v] || '');
+}
+
+document.getElementById('weight').addEventListener('input', function() {
+  const w = parseFloat(this.value);
+  const h = settings.height / 100;
+  const bmi = w / (h * h);
+  const diff = w - settings.goalWeight;
+  const hint = document.getElementById('weightHint');
+  if (!isNaN(bmi)) {
+    hint.textContent = `BMI: ${bmi.toFixed(1)} ／ 目標まで: ${diff > 0 ? '+' : ''}${diff.toFixed(1)} kg`;
+    hint.className = 'score-hint ' + (diff <= 0 ? 'good' : diff <= 5 ? 'warn' : 'bad');
+  }
+});
+
+document.getElementById('bodyfat').addEventListener('input', function() {
+  const f = parseFloat(this.value);
+  const diff = f - settings.goalFat;
+  const hint = document.getElementById('fatHint');
+  if (!isNaN(f)) {
+    hint.textContent = `目標まで: ${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
+    hint.className = 'score-hint ' + (diff <= 0 ? 'good' : diff <= 5 ? 'warn' : 'bad');
+  }
+});
+
+document.getElementById('heartRate').addEventListener('input', function() {
+  const hr = parseInt(this.value);
+  const hint = document.getElementById('hrHint');
+  if (isNaN(hr)) { hint.textContent=''; return; }
+  if (hr < 50) hint.textContent = 'アスリートレベル💚', hint.className='score-hint good';
+  else if (hr < 60) hint.textContent = '優良 (50-59)', hint.className='score-hint good';
+  else if (hr < 70) hint.textContent = '正常 (60-69)', hint.className='score-hint';
+  else if (hr < 80) hint.textContent = 'やや高め (70-79)', hint.className='score-hint warn';
+  else hint.textContent = '高め ⚠️ (80+)', hint.className='score-hint bad';
+});
+
+function toggleExercise() {
+  document.getElementById('exerciseFields').style.display =
+    document.getElementById('exercised').checked ? 'block' : 'none';
+}
+
+function addExerciseRow() {
+  const container = document.getElementById('exerciseRows');
+  const rows = container.querySelectorAll('.ex-row');
+  if (rows.length >= 5) { showToast('最大5種目まで追加できます', ''); return; }
+  const div = document.createElement('div');
+  div.className = 'ex-row';
+  div.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr 28px;gap:6px;margin-bottom:6px;';
+  div.innerHTML = `
+    <input type="text" class="ex-type" placeholder="例: 筋トレ" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;color:var(--text);font-size:13px;outline:none;">
+    <input type="number" class="ex-min" placeholder="30" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;color:var(--text);font-size:13px;outline:none;">
+    <input type="text" class="ex-reps" placeholder="3×10" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;color:var(--text);font-size:13px;outline:none;">
+    <button type="button" onclick="removeExerciseRow(this)" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text3);font-size:14px;cursor:pointer;padding:0 6px;">✕</button>
+  `;
+  container.appendChild(div);
+  if (container.querySelectorAll('.ex-row').length >= 5) {
+    document.getElementById('addExBtn').style.opacity = '0.3';
+    document.getElementById('addExBtn').disabled = true;
+  }
+}
+
+function removeExerciseRow(btn) {
+  btn.closest('.ex-row').remove();
+  document.getElementById('addExBtn').style.opacity = '1';
+  document.getElementById('addExBtn').disabled = false;
+}
+
+// ───────────────────────────────────────────────
+// SUBMIT TO NOTION
+// ───────────────────────────────────────────────
+async function submitLog() {
+  const btn = document.getElementById('submitBtn');
+  const today = new Date();
+  const dateStr = formatDate(today);
+
+  const weight    = parseFloat(document.getElementById('weight').value) || null;
+  const bodyfat   = parseFloat(document.getElementById('bodyfat').value) || null;
+  const bedtime   = document.getElementById('bedtime').value;
+  const waketime  = document.getElementById('waketime').value;
+  const sleepH    = calcSleepHours(bedtime, waketime);
+  const sleepQ    = document.getElementById('sleepQuality').value;
+  const mood      = document.getElementById('mood').value;
+  const stress    = document.getElementById('stress').value;
+  const meditation= document.getElementById('meditation').checked;
+  const exercised = document.getElementById('exercised').checked;
+  // 複数種目データ収集
+  const exRows = document.querySelectorAll('#exerciseRows .ex-row');
+  const exercises = [];
+  let totalExMin = 0;
+  exRows.forEach(row => {
+    const type  = row.querySelector('.ex-type')?.value?.trim();
+    const mins  = parseInt(row.querySelector('.ex-min')?.value) || 0;
+    const reps  = row.querySelector('.ex-reps')?.value?.trim();
+    if (type) {
+      exercises.push({ type, mins, reps });
+      totalExMin += mins;
+    }
+  });
+  const exSummary = exercises.map(e => `${e.type}${e.mins?'('+e.mins+'分)':''}${e.reps?'×'+e.reps:''}`).join(' / ');
+  const steps     = parseInt(document.getElementById('steps').value) || null;
+  const water     = parseFloat(document.getElementById('water').value) || null;
+  const foodQ     = document.getElementById('foodQuality').value;
+  const calories  = parseInt(document.getElementById('calories').value) || null;
+  const alcohol   = document.getElementById('alcohol').value;
+  const foodMemo  = document.getElementById('foodMemo').value;
+  const supps     = document.getElementById('supplements').value;
+  const condition = document.getElementById('condition').value;
+  const hr        = parseInt(document.getElementById('heartRate').value) || null;
+
+  if (!settings.notionToken || !settings.notionDbId) {
+    showToast('⚠️ 設定タブでNotion APIキーとDB IDを入力してください', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>保存中...';
+
+  const properties = {
+    "日付": { "date": { "start": dateStr } },
+  };
+
+  if (weight !== null)   properties["体重_kg"]        = { "number": weight };
+  if (bodyfat !== null)  properties["体脂肪率_%"]      = { "number": bodyfat };
+  if (bedtime)           properties["就寝時刻"]        = { "rich_text": [{ "text": { "content": bedtime } }] };
+  if (waketime)          properties["起床時刻"]        = { "rich_text": [{ "text": { "content": waketime } }] };
+  if (sleepH !== null)   properties["総睡眠時間_h"]    = { "number": sleepH };
+  if (sleepQ)            properties["睡眠の質"]        = { "select": { "name": selectSleepLabel(sleepQ) } };
+  if (mood)              properties["気分スコア"]      = { "select": { "name": mood } };
+  if (stress)            properties["ストレスレベル"]  = { "select": { "name": selectStressLabel(stress) } };
+  properties["瞑想"]                                   = { "checkbox": meditation };
+  properties["運動有無"]                               = { "checkbox": exercised };
+  if (exSummary)         properties["運動種類_内容"]   = { "rich_text": [{ "text": { "content": exSummary } }] };
+  if (totalExMin > 0)    properties["運動時間_分"]     = { "number": totalExMin };
+  if (steps !== null)    properties["歩数"]            = { "number": steps };
+  if (water !== null)    properties["水分摂取量_L"]    = { "number": water };
+  if (foodQ)             properties["食事の質スコア"]  = { "select": { "name": selectFoodLabel(foodQ) } };
+  if (calories !== null) properties["カロリー_kcal"]   = { "number": calories };
+  if (foodMemo)          properties["食事内容メモ"]    = { "rich_text": [{ "text": { "content": foodMemo } }] };
+  if (supps)             properties["サプリ記録"]      = { "rich_text": [{ "text": { "content": supps } }] };
+  if (condition)         properties["体調スコア"]      = { "select": { "name": selectCondLabel(condition) } };
+  if (hr !== null)       properties["安静時心拍数_bpm"]= { "number": hr };
+
+  try {
+    const res = await notionRequest('POST', 'pages', {
+      parent: { database_id: settings.notionDbId },
+      properties
+    });
+    if (res.id) {
+      showToast('✅ 保存しました！', 'success');
+      resetForm();
+    } else {
+      showToast('❌ 保存に失敗しました', 'error');
+      console.error(res);
+    }
+  } catch(e) {
+    showToast('❌ エラー: ' + e.message, 'error');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '✅ Notionに保存する';
+}
+
+function calcSleepHours(bed, wake) {
+  if (!bed || !wake) return null;
+  const [bh, bm] = bed.split(':').map(Number);
+  const [wh, wm] = wake.split(':').map(Number);
+  let mins = (wh * 60 + wm) - (bh * 60 + bm);
+  if (mins < 0) mins += 24 * 60;
+  return Math.round(mins / 60 * 10) / 10;
+}
+
+function selectSleepLabel(v) {
+  return ['','1-最悪','2-浅い','3-普通','4-良い','5-熟睡'][parseInt(v)] || '';
+}
+function selectStressLabel(v) {
+  return ['','1-穏やか','2-ほぼなし','3-少しあり','4-かなりあり','5-限界'][parseInt(v)] || '';
+}
+function selectFoodLabel(v) {
+  return ['','1-最悪','2-悪い','3-普通','4-良い','5-最高'][parseInt(v)] || '';
+}
+function selectCondLabel(v) {
+  return ['','1-不調','2-だるい','3-普通','4-良好','5-絶好調'][parseInt(v)] || '';
+}
+
+function resetForm() {
+  ['weight','bodyfat','steps','water','calories','foodMemo','supplements','heartRate'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  // 運動行リセット（1行目のみ残す）
+  const exContainer = document.getElementById('exerciseRows');
+  exContainer.querySelectorAll('.ex-row').forEach((row, i) => {
+    if (i === 0) {
+      row.querySelectorAll('input').forEach(inp => inp.value = '');
+    } else {
+      row.remove();
+    }
+  });
+  document.getElementById('addExBtn').style.opacity = '1';
+  document.getElementById('addExBtn').disabled = false;
+  ['sleepQuality','mood','stress','foodQuality','condition'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('meditation').checked = false;
+  document.getElementById('exercised').checked = false;
+  document.getElementById('exerciseFields').style.display = 'none';
+  document.getElementById('alcohol').value = 'なし';
+  ['weightHint','fatHint','sleepHint','moodHint','stressHint','foodHint','conditionHint','hrHint']
+    .forEach(id => { document.getElementById(id).textContent=''; });
+}
+
+// ───────────────────────────────────────────────
+// NOTION API
+// ───────────────────────────────────────────────
+async function notionRequest(method, endpoint, body) {
+  const res = await fetch(`https://api.notion.com/v1/${endpoint}`, {
+    method,
+    headers: {
+      'Authorization': `Bearer ${settings.notionToken}`,
+      'Notion-Version': '2022-06-28',
+      'Content-Type': 'application/json'
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  return res.json();
+}
+
+async function fetchLogs(days = 30) {
+  if (!settings.notionToken || !settings.notionDbId) return [];
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  const res = await notionRequest('POST', `databases/${settings.notionDbId}/query`, {
+    filter: {
+      property: '日付',
+      date: { on_or_after: formatDate(since) }
+    },
+    sorts: [{ property: '日付', direction: 'ascending' }],
+    page_size: 100
+  });
+  if (!res.results) return [];
+  return res.results.map(parseNotionPage).filter(p => p.date);
+}
+
+function parseNotionPage(page) {
+  const p = page.properties;
+  const get = (key, type) => {
+    if (!p[key]) return null;
+    if (type === 'number') return p[key].number;
+    if (type === 'formula') return p[key].formula?.number;
+    if (type === 'date') return p[key].date?.start;
+    if (type === 'select') return p[key].select?.name;
+    if (type === 'checkbox') return p[key].checkbox;
+    if (type === 'text') return p[key].rich_text?.[0]?.plain_text;
+    return null;
+  };
+  const selectNum = (key) => {
+    const v = get(key, 'select');
+    if (!v) return null;
+    return parseInt(v.charAt(0)) || null;
+  };
+  return {
+    date: get('日付','date'),
+    weight: get('体重_kg','number'),
+    bodyfat: get('体脂肪率_%','number'),
+    bmi: get('BMI','formula'),
+    sleepH: get('総睡眠時間_h','number'),
+    sleepQ: selectNum('睡眠の質'),
+    mood: selectNum('気分スコア'),
+    stress: selectNum('ストレスレベル'),
+    exercised: get('運動有無','checkbox'),
+    foodQ: selectNum('食事の質スコア'),
+    condition: selectNum('体調スコア'),
+    water: get('水分摂取量_L','number'),
+    heartRate: get('安静時心拍数_bpm','number'),
+    exerciseType: get('運動種類_内容','text'),
+    exerciseMin: get('運動時間_分','number'),
+    steps: get('歩数','number'),
+    calories: get('カロリー_kcal','number'),
+  };
+}
+
+// ───────────────────────────────────────────────
+// DASHBOARD
+// ───────────────────────────────────────────────
+async function loadDashboard() {
+  if (!settings.notionToken) {
+    showToast('設定タブでNotion APIキーを入力してください', 'error');
+    return;
+  }
+  showToast('データ取得中...', '');
+  try {
+    cachedLogs = await fetchLogs(30);
+    renderDashboard(cachedLogs);
+    document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString('ja-JP', {hour:'2-digit',minute:'2-digit'});
+    showToast('✅ 更新しました', 'success');
+  } catch(e) {
+    showToast('❌ 取得失敗: ' + e.message, 'error');
+  }
+}
+
+function renderDashboard(logs) {
+  if (!logs.length) return;
+
+  const latest = [...logs].reverse().find(l => l.weight);
+  const gw = settings.goalWeight;
+  const sw = settings.startWeight;
+  const gf = settings.goalFat;
+  const h  = settings.height / 100;
+
+  // KPIs
+  if (latest?.weight) {
+    const w = latest.weight;
+    const bmi = w / (h*h);
+    const diff = w - gw;
+    document.getElementById('kpiWeight').textContent = w.toFixed(1) + ' kg';
+    document.getElementById('kpiWeightSub').textContent = `目標まで: ${diff > 0 ? '+' : ''}${diff.toFixed(1)} kg`;
+    document.getElementById('kpiWeightSub').className = 'kpi-sub ' + (diff <= 0 ? 'good' : 'bad');
+    document.getElementById('kpiBMI').textContent = bmi.toFixed(1);
+    document.getElementById('kpiBMISub').textContent = bmi < 25 ? '正常範囲' : '過体重';
+    document.getElementById('kpiBMISub').className = 'kpi-sub ' + (bmi < 25 ? 'good' : 'bad');
+
+    // progress bar: 0% = start weight, 100% = goal
+    const totalLoss = sw - gw;
+    const achieved  = sw - w;
+    const pct = Math.min(100, Math.max(0, achieved / totalLoss * 100));
+    document.getElementById('weightBar').style.width = pct.toFixed(0) + '%';
+    document.getElementById('weightProgress').textContent = `${w.toFixed(1)} kg → ${gw} kg`;
+  }
+
+  const latestFat = [...logs].reverse().find(l => l.bodyfat);
+  if (latestFat?.bodyfat) {
+    const f = latestFat.bodyfat;
+    document.getElementById('kpiFat').textContent = f.toFixed(1) + '%';
+    const diff = f - gf;
+    document.getElementById('kpiFatSub').textContent = `目標まで: ${diff > 0 ? '+' : ''}${diff.toFixed(1)}%`;
+    document.getElementById('kpiFatSub').className = 'kpi-sub ' + (diff <= 0 ? 'good' : 'bad');
+    const pct2 = Math.min(100, Math.max(0, (20 - f) / (20 - gf) * 100));
+    document.getElementById('fatBar').style.width = pct2.toFixed(0) + '%';
+    document.getElementById('fatProgress').textContent = `${f.toFixed(1)}% → ${gf}%`;
+  }
+
+  // 今週グリッド（月〜日）
+  const today = new Date();
+  const mon = getMonday(today);
+  const weekDates = Array.from({length:7}, (_,i) => {
+    const d = new Date(mon);
+    d.setDate(mon.getDate() + i);
+    return formatDate(d);
+  });
+  let exerciseCount = 0;
+  const weekWeights = [];
+  weekDates.forEach((date, i) => {
+    const log = logs.find(l => l.date === date);
+    const dot = document.getElementById('wd' + i);
+    if (log) {
+      dot.className = 'dot filled';
+      if (log.exercised) exerciseCount++;
+      if (log.weight) weekWeights.push(log.weight);
+    } else {
+      const d = new Date(date);
+      dot.className = d <= today ? 'dot partial' : 'dot';
+    }
+  });
+  document.getElementById('kpiExercise').textContent = exerciseCount;
+
+  // week stats
+  const weekLogs = logs.filter(l => weekDates.includes(l.date));
+  const avgSleep  = avg(weekLogs.map(l => l.sleepH).filter(Boolean));
+  const avgMood   = avg(weekLogs.map(l => l.mood).filter(Boolean));
+  const avgWater  = avg(weekLogs.map(l => l.water).filter(Boolean));
+  document.getElementById('weekStats').innerHTML = `
+    <div style="text-align:center">
+      <div style="font-size:10px;color:var(--text3)">平均睡眠</div>
+      <div style="font-family:'DM Mono',monospace;font-size:16px;color:var(--accent2)">${avgSleep ? avgSleep.toFixed(1)+'h' : '—'}</div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:10px;color:var(--text3)">平均気分</div>
+      <div style="font-family:'DM Mono',monospace;font-size:16px;color:var(--accent3)">${avgMood ? avgMood.toFixed(1) : '—'}</div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:10px;color:var(--text3)">平均水分</div>
+      <div style="font-family:'DM Mono',monospace;font-size:16px;color:var(--accent4)">${avgWater ? avgWater.toFixed(1)+'L' : '—'}</div>
+    </div>
+  `;
+
+  // Weight chart
+  const wLogs = logs.filter(l => l.weight);
+  if (weightChartObj) weightChartObj.destroy();
+  const wCtx = document.getElementById('weightChart').getContext('2d');
+  weightChartObj = new Chart(wCtx, {
+    type: 'line',
+    data: {
+      labels: wLogs.map(l => l.date.slice(5)),
+      datasets: [{
+        data: wLogs.map(l => l.weight),
+        borderColor: '#7fff6e',
+        backgroundColor: 'rgba(127,255,110,0.08)',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#7fff6e',
+        tension: 0.3,
+        fill: true,
+        label: '体重 (kg)'
+      },{
+        data: wLogs.map(() => gw),
+        borderColor: 'rgba(127,255,110,0.3)',
+        borderWidth: 1,
+        borderDash: [4,4],
+        pointRadius: 0,
+        label: '目標'
+      }]
+    },
+    options: chartOpts('kg')
+  });
+
+  // Mood × Sleep chart
+  const m14 = logs.slice(-14);
+  if (moodChartObj) moodChartObj.destroy();
+  const mCtx = document.getElementById('moodChart').getContext('2d');
+  moodChartObj = new Chart(mCtx, {
+    type: 'line',
+    data: {
+      labels: m14.map(l => l.date.slice(5)),
+      datasets: [{
+        data: m14.map(l => l.mood),
+        borderColor: '#ff7eb3',
+        backgroundColor: 'rgba(255,126,179,0.08)',
+        borderWidth: 2,
+        pointRadius: 3,
+        tension: 0.3,
+        fill: false,
+        label: '気分(×1)',
+        yAxisID: 'y'
+      },{
+        data: m14.map(l => l.sleepH),
+        borderColor: '#4fc3f7',
+        backgroundColor: 'rgba(79,195,247,0.08)',
+        borderWidth: 2,
+        pointRadius: 3,
+        tension: 0.3,
+        fill: false,
+        label: '睡眠(h)',
+        yAxisID: 'y1'
+      }]
+    },
+    options: {
+      ...chartOpts(),
+      scales: {
+        x: { ticks: { color: '#555a6b', font: { size: 10 } }, grid: { color: '#2a2d35' } },
+        y: { ticks: { color: '#ff7eb3', font: { size: 10 } }, grid: { color: '#2a2d35' }, min: 0, max: 10, position: 'left' },
+        y1: { ticks: { color: '#4fc3f7', font: { size: 10 } }, grid: { display: false }, min: 0, max: 12, position: 'right' }
+      }
+    }
+  });
+}
+
+function chartOpts(unit = '') {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: true, labels: { color: '#8b8f9e', font: { size: 10 }, boxWidth: 12 } }
+    },
+    scales: {
+      x: { ticks: { color: '#555a6b', font: { size: 10 } }, grid: { color: '#2a2d35' } },
+      y: { ticks: { color: '#8b8f9e', font: { size: 10 } }, grid: { color: '#2a2d35' } }
+    }
+  };
+}
+
+// ───────────────────────────────────────────────
+// WEEKLY ANALYSIS
+// ───────────────────────────────────────────────
+function getMonday(d) {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = (day === 0 ? -6 : 1 - day);
+  date.setDate(date.getDate() + diff);
+  date.setHours(0,0,0,0);
+  return date;
+}
+
+function updateWeekLabel() {
+  const today = new Date();
+  const mon = getMonday(today);
+  mon.setDate(mon.getDate() + weekOffset * 7);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  document.getElementById('weekLabel').textContent =
+    `${mon.getMonth()+1}/${mon.getDate()}（月）〜 ${sun.getMonth()+1}/${sun.getDate()}（日）`;
+}
+
+function changeWeek(dir) {
+  weekOffset += dir;
+  if (weekOffset > 0) weekOffset = 0;
+  updateWeekLabel();
+}
+
+async function runWeeklyAnalysis() {
+  if (!settings.notionToken || !settings.notionDbId) {
+    showToast('Notion設定が必要です', 'error'); return;
+  }
+  if (!settings.claudeApiKey) {
+    showToast('Claude APIキーを設定してください', 'error'); return;
+  }
+
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Notionからデータ取得中...';
+
+  const today = new Date();
+  const mon = getMonday(today);
+  mon.setDate(mon.getDate() + weekOffset * 7);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+
+  let weekLogs = [];
+  try {
+    const res = await notionRequest('POST', `databases/${settings.notionDbId}/query`, {
+      filter: {
+        and: [
+          { property: '日付', date: { on_or_after: formatDate(mon) } },
+          { property: '日付', date: { on_or_before: formatDate(sun) } }
+        ]
+      },
+      sorts: [{ property: '日付', direction: 'ascending' }]
+    });
+    weekLogs = (res.results || []).map(parseNotionPage).filter(p => p.date);
+  } catch(e) {
+    showToast('❌ データ取得失敗: ' + e.message, 'error');
+    btn.disabled = false; btn.innerHTML = '🤖 今週を分析する';
+    return;
+  }
+
+  if (!weekLogs.length) {
+    document.getElementById('weekDataPreview').textContent = 'この週のデータがありません';
+    showToast('データなし', 'error');
+    btn.disabled = false; btn.innerHTML = '🤖 今週を分析する';
+    return;
+  }
+
+  // データプレビュー表示
+  const days = ['月','火','水','木','金','土','日'];
+  const preview = weekLogs.map(l => {
+    const d = new Date(l.date);
+    const dayIdx = (d.getDay() + 6) % 7;
+    return `${days[dayIdx]} ${l.date.slice(5)} ｜ 体重:${l.weight??'—'}kg 睡眠:${l.sleepH??'—'}h 気分:${l.mood??'—'} ストレス:${l.stress??'—'} 運動:${l.exercised?'✓':'✗'}`;
+  }).join('\n');
+  document.getElementById('weekDataPreview').textContent = preview;
+
+  btn.innerHTML = '<span class="spinner"></span>Claude分析中...';
+  document.getElementById('analysisOutput').className = 'analysis-output loading';
+  document.getElementById('analysisOutput').textContent = '分析中...';
+
+  // Build prompt
+  const prompt = buildAnalysisPrompt(weekLogs, mon, sun);
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': settings.claudeApiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text || 'エラー: 応答なし';
+    document.getElementById('analysisOutput').className = 'analysis-output';
+    document.getElementById('analysisOutput').innerHTML = formatAnalysis(text);
+  } catch(e) {
+    document.getElementById('analysisOutput').textContent = 'エラー: ' + e.message;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '🤖 今週を分析する';
+}
+
+function buildAnalysisPrompt(logs, mon, sun) {
+  const dayNames = ['月','火','水','木','金','土','日'];
+  const rows = logs.map(l => {
+    const d = new Date(l.date);
+    const day = dayNames[(d.getDay() + 6) % 7];
+    return `・${day}曜(${l.date.slice(5)}): 体重${l.weight??'未'}kg / 体脂肪${l.bodyfat??'未'}% / 睡眠${l.sleepH??'未'}h(質${l.sleepQ??'未'}) / 気分${l.mood??'未'}/10 / ストレス${l.stress??'未'}/5 / 体調${l.condition??'未'}/5 / 運動${l.exercised?'あり（'+l.exerciseType+' '+l.exerciseMin+'分）':'なし'} / 水分${l.water??'未'}L / 食事の質${l.foodQ??'未'}/5`;
+  }).join('\n');
+
+  return `あなたは健康アドバイザーです。以下は26歳男性（身長160cm）の${mon.getMonth()+1}/${mon.getDate()}〜${sun.getMonth()+1}/${sun.getDate()}の健康ログです。
+
+【目標】体重60kg（現在から-16.2kg減）、体脂肪率15%
+
+【今週のデータ】
+${rows}
+
+以下の形式で簡潔に分析してください（合計300字以内）：
+
+【総合評価】A/B/C/D（1行で理由も）
+【良かった点】1〜2点、具体的に
+【改善ポイント】来週取り組むべき最重要1点
+【睡眠×気分の傾向】気づいたパターンがあれば
+【来週のアドバイス】一言で`;
+}
+
+function formatAnalysis(text) {
+  return text
+    .replace(/【(.+?)】/g, '<h3>【$1】</h3>')
+    .replace(/\n/g, '<br>');
+}
+
+// ───────────────────────────────────────────────
+// SETTINGS
+// ───────────────────────────────────────────────
+function saveSettings() {
+  settings.notionToken  = document.getElementById('notionToken').value.trim();
+  settings.notionDbId   = document.getElementById('notionDbId').value.trim();
+  settings.claudeApiKey = document.getElementById('claudeApiKey').value.trim();
+  settings.goalWeight   = parseFloat(document.getElementById('goalWeight').value) || 60;
+  settings.goalFat      = parseFloat(document.getElementById('goalFat').value) || 15;
+  settings.height       = parseFloat(document.getElementById('height').value) || 160;
+  settings.startWeight  = parseFloat(document.getElementById('startWeight').value) || 76.2;
+  try {
+    localStorage.setItem('health_settings', JSON.stringify(settings));
+    showToast('✅ 設定を保存しました', 'success');
+  } catch(e) {
+    showToast('⚠️ 保存失敗（ローカルストレージ不可）', 'error');
+  }
+}
+
+// ───────────────────────────────────────────────
+// UTILS
+// ───────────────────────────────────────────────
+function formatDate(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
+
+function avg(arr) {
+  if (!arr.length) return null;
+  return arr.reduce((a,b) => a+b, 0) / arr.length;
+}
+
+let toastTimer;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast'; }, 2800);
+}
+
+// ───────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
