@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Health Log</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#0e0f11; --sur:#16181c; --sur2:#1e2026; --bdr:#2a2d35;
+  --g:#7fff6e; --b:#4fc3f7; --p:#ff7eb3; --o:#ffb347;
+  --t:#e8eaf0; --t2:#8b8f9e; --t3:#555a6b; --r:#ff5a5a;
+  --rad:12px; --rad2:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--t);font-family:'Noto Sans JP',sans-serif;font-size:14px;}
+#app{max-width:600px;margin:0 auto;}
+.hdr{padding:14px 16px 0;display:flex;justify-content:space-between;align-items:center;}
+.hdr-t{font-family:'DM Mono',monospace;font-size:12px;color:var(--t2);}
+.hdr-d{font-family:'DM Mono',monospace;font-size:12px;color:var(--g);background:rgba(127,255,110,.1);padding:4px 10px;border-radius:20px;border:1px solid rgba(127,255,110,.25);}
+.tabs{display:flex;padding:14px 16px 0;gap:2px;border-bottom:1px solid var(--bdr);overflow-x:auto;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{padding:8px 12px;border:none;background:none;color:var(--t3);font-family:'Noto Sans JP',sans-serif;font-size:12px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;flex-shrink:0;}
+.tab.on{color:var(--t);border-bottom-color:var(--g);}
+.pnl{display:none;padding:16px;height:calc(100vh - 90px);overflow-y:auto;}
+.pnl.on{display:block;}
+.pnl::-webkit-scrollbar{width:3px;}
+.pnl::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px;}
+.card{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:14px;margin-bottom:10px;}
+.ct{font-size:10px;font-weight:600;color:var(--t2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.row1{margin-bottom:8px;}
+.fld{display:flex;flex-direction:column;gap:4px;}
+.fld label{font-size:11px;color:var(--t2);}
+.fld input,.fld select,.fld textarea{background:var(--sur2);border:1px solid var(--bdr);border-radius:var(--rad2);padding:9px 11px;color:var(--t);font-family:'Noto Sans JP',sans-serif;font-size:13px;outline:none;width:100%;-webkit-appearance:none;}
+.fld select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b8f9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;}
+.fld textarea{resize:vertical;min-height:56px;}
+.hint{font-size:10px;margin-top:3px;font-family:'DM Mono',monospace;color:var(--t3);}
+.hint.g{color:var(--g);}
+.hint.w{color:var(--o);}
+.hint.r{color:var(--r);}
+.chk{display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--sur2);border:1px solid var(--bdr);border-radius:var(--rad2);cursor:pointer;}
+.chk input[type=checkbox]{width:17px;height:17px;accent-color:var(--g);flex-shrink:0;}
+.chk span{font-size:13px;}
+.btn{width:100%;padding:13px;background:var(--g);color:#0a0c08;border:none;border-radius:var(--rad);font-family:'Noto Sans JP',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;}
+.btn:active{opacity:.85;}
+.btn2{padding:9px 14px;background:var(--sur2);color:var(--t);border:1px solid var(--bdr);border-radius:var(--rad2);font-family:'Noto Sans JP',sans-serif;font-size:12px;cursor:pointer;}
+.btn2:active{border-color:var(--b);color:var(--b);}
+.btn3{padding:9px 14px;background:var(--sur2);color:var(--r);border:1px solid var(--r);border-radius:var(--rad2);font-family:'Noto Sans JP',sans-serif;font-size:12px;cursor:pointer;}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--sur2);border:1px solid var(--bdr);border-radius:20px;padding:9px 18px;font-size:12px;transition:transform .3s;z-index:999;pointer-events:none;}
+.toast.on{transform:translateX(-50%) translateY(0);}
+.toast.ok{border-color:var(--g);color:var(--g);}
+.toast.ng{border-color:var(--r);color:var(--r);}
+.kgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.kpi{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:12px;}
+.kl{font-size:10px;color:var(--t2);margin-bottom:4px;letter-spacing:.06em;}
+.kv{font-family:'DM Mono',monospace;font-size:20px;color:var(--t);}
+.kv.g{color:var(--g);}
+.ks{font-size:10px;color:var(--t3);margin-top:2px;font-family:'DM Mono',monospace;}
+.ks.g{color:var(--g);}
+.ks.r{color:var(--r);}
+.pbr{margin-bottom:10px;}
+.pbl{display:flex;justify-content:space-between;font-size:11px;color:var(--t2);margin-bottom:5px;}
+.pb{height:5px;background:var(--sur2);border-radius:3px;overflow:hidden;}
+.pf{height:100%;border-radius:3px;background:var(--g);transition:width .5s;}
+.ch{position:relative;height:170px;margin-top:8px;}
+.wdots{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin-bottom:10px;}
+.wdl{font-size:10px;color:var(--t3);margin-bottom:3px;}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--bdr);}
+.dot.on{background:var(--g);}
+.wss{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+.ws{text-align:center;}
+.wsl{font-size:10px;color:var(--t3);}
+.wsv{font-family:'DM Mono',monospace;font-size:15px;margin-top:2px;}
+.ao{background:var(--sur2);border:1px solid var(--bdr);border-radius:var(--rad);padding:14px;font-size:13px;line-height:1.8;min-height:100px;}
+.ao h3{color:var(--g);font-size:12px;margin:10px 0 4px;}
+.ws2{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.ws2 button{background:var(--sur2);border:1px solid var(--bdr);color:var(--t2);width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.wlb{flex:1;font-family:'DM Mono',monospace;font-size:11px;color:var(--t2);text-align:center;}
+.hi{background:var(--sur2);border:1px solid var(--bdr);border-radius:var(--rad2);padding:10px 12px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;}
+.hid{font-family:'DM Mono',monospace;font-size:12px;color:var(--g);}
+.hii{font-size:11px;color:var(--t2);margin-top:2px;}
+.hib{background:none;border:none;color:var(--t3);cursor:pointer;font-size:15px;padding:2px 6px;}
+.ip{background:var(--sur2);border:1px solid var(--g);border-radius:var(--rad);padding:14px;margin-bottom:10px;}
+.ipt{font-size:12px;color:var(--t2);margin-bottom:10px;line-height:1.7;}
+.ex-hdr{display:grid;grid-template-columns:2fr 1fr 1fr 26px;gap:5px;margin-bottom:3px;padding:0 1px;}
+.ex-hl{font-size:10px;color:var(--t3);}
+.ex-row{display:grid;grid-template-columns:2fr 1fr 1fr 26px;gap:5px;margin-bottom:5px;}
+.ex-i{background:var(--sur2);border:1px solid var(--bdr);border-radius:var(--rad2);padding:8px 9px;color:var(--t);font-size:12px;outline:none;width:100%;}
+.ex-i:focus{border-color:var(--g);}
+.ex-del{background:none;border:1px solid var(--bdr);border-radius:5px;color:var(--t3);cursor:pointer;font-size:13px;width:26px;height:36px;}
+.addbtn{background:none;border:1px dashed var(--bdr);border-radius:var(--rad2);padding:7px;width:100%;color:var(--t3);font-size:11px;cursor:pointer;margin-bottom:8px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.sp{display:inline-block;width:13px;height:13px;border:2px solid var(--bdr);border-top-color:var(--g);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:5px;}
+</style>
+</head>
+<body>
+<div id="app">
+<div class="hdr">
+  <span class="hdr-t">HEALTH LOG</span>
+  <span class="hdr-d" id="hdate">読込中...</span>
+</div>
+<div class="tabs">
+  <button class="tab on" id="tb0" onclick="go(0)">📝 記録</button>
+  <button class="tab" id="tb1" onclick="go(1)">📊 ダッシュボード</button>
+  <button class="tab" id="tb2" onclick="go(2)">🤖 週次分析</button>
+  <button class="tab" id="tb3" onclick="go(3)">📋 履歴</button>
+  <button class="tab" id="tb4" onclick="go(4)">⚙️ 設定</button>
+  <button class="tab" id="tb5" onclick="go(5)">📖 使い方</button>
+</div>
+
+<!-- 記録 -->
+<div class="pnl on" id="p0">
+  <div class="card">
+    <div class="ct">⚖️ 体型・体重</div>
+    <div class="row2">
+      <div class="fld"><label>体重 (kg)</label><input type="number" id="fw" step="0.1" placeholder="76.2" oninput="wHint()"></div>
+      <div class="fld"><label>体脂肪率 (%)</label><input type="number" id="ff" step="0.1" placeholder="—" oninput="fHint()"></div>
+    </div>
+    <div class="hint" id="hw"></div>
+    <div class="hint" id="hf" style="margin-top:2px;"></div>
+  </div>
+  <div class="card">
+    <div class="ct">🌙 睡眠</div>
+    <div class="row2">
+      <div class="fld"><label>就寝時刻</label><input type="time" id="fbed" value="23:30"></div>
+      <div class="fld"><label>起床時刻</label><input type="time" id="fwk" value="07:00"></div>
+    </div>
+    <div class="row1">
+      <div class="fld">
+        <label>睡眠の質</label>
+        <select id="fsq" onchange="sh(this,'hsq',['','最悪','浅い','普通','良い','熟睡✨'],['','r','r','','g','g'])">
+          <option value="">選択してください</option>
+          <option value="5">5 — 熟睡・スッキリ目覚めた</option>
+          <option value="4">4 — 概ね良く眠れた</option>
+          <option value="3">3 — 普通</option>
+          <option value="2">2 — 途中で目が覚めた・浅かった</option>
+          <option value="1">1 — ほぼ眠れなかった</option>
+        </select>
+        <div class="hint" id="hsq"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">🧠 メンタル・ストレス</div>
+    <div class="row2">
+      <div class="fld">
+        <label>気分スコア (1〜10)</label>
+        <select id="fmo" onchange="sh(this,'hmo',['','最悪','落ち込','落ち込','やや落','普通','やや良','良い','良い','非常に良','最高✨'],['','r','r','r','r','','','g','g','g','g'])">
+          <option value="">選択</option>
+          <option value="10">10 — 最高に充実</option>
+          <option value="9">9 — 非常に良い</option>
+          <option value="8">8 — 良い</option>
+          <option value="7">7 — やや良い</option>
+          <option value="6">6 — 普通よりやや良い</option>
+          <option value="5">5 — 普通</option>
+          <option value="4">4 — やや落ちている</option>
+          <option value="3">3 — 落ちている</option>
+          <option value="2">2 — かなり落ち込んでいる</option>
+          <option value="1">1 — 非常に落ち込んでいる</option>
+        </select>
+        <div class="hint" id="hmo"></div>
+      </div>
+      <div class="fld">
+        <label>ストレスレベル (1〜5)</label>
+        <select id="fst" onchange="sh(this,'hst',['','穏やか✨','ほぼなし','少しあり','かなりあり','限界🚨'],['','g','g','','w','r'])">
+          <option value="">選択</option>
+          <option value="1">1 — 全くなし・穏やか</option>
+          <option value="2">2 — ほぼ問題なし</option>
+          <option value="3">3 — 多少あり</option>
+          <option value="4">4 — かなり感じた</option>
+          <option value="5">5 — 限界に近い</option>
+        </select>
+        <div class="hint" id="hst"></div>
+      </div>
+    </div>
+    <div class="row1">
+      <label class="chk" for="fmed"><input type="checkbox" id="fmed"><span>🧘 瞑想した</span></label>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">🏋️ 運動</div>
+    <div class="row1"><label class="chk" for="fex"><input type="checkbox" id="fex" onchange="togEx()"><span>💪 運動した</span></label></div>
+    <div id="exarea" style="display:none;margin-top:10px;">
+      <div class="ex-hdr">
+        <div class="ex-hl">種類・内容</div>
+        <div class="ex-hl">時間(分)</div>
+        <div class="ex-hl">回数/set</div>
+        <div></div>
+      </div>
+      <div id="exrows">
+        <div class="ex-row">
+          <input type="text" class="ex-i etype" placeholder="例: ジョギング">
+          <input type="number" class="ex-i emin" placeholder="30">
+          <input type="text" class="ex-i ereps" placeholder="3×10">
+          <div style="display:flex;align-items:center;justify-content:center;color:var(--t3);">—</div>
+        </div>
+      </div>
+      <button class="addbtn" id="addbtn" onclick="addEx()">＋ 種目を追加（最大5種目）</button>
+    </div>
+    <div class="row1"><div class="fld"><label>歩数</label><input type="number" id="fst2" placeholder="8000"></div></div>
+  </div>
+  <div class="card">
+    <div class="ct">🍽️ 食事・水分</div>
+    <div class="row2">
+      <div class="fld"><label>水分摂取量 (L)</label><input type="number" id="fwt" step="0.1" placeholder="2.0"></div>
+      <div class="fld">
+        <label>食事の質 (1〜5)</label>
+        <select id="ffq" onchange="sh(this,'hfq',['','最悪','悪い','普通','良い','最高✨'],['','r','r','','g','g'])">
+          <option value="">選択</option>
+          <option value="5">5 — バランス◎ 暴食なし</option>
+          <option value="4">4 — 概ねバランス良い</option>
+          <option value="3">3 — 普通（コンビニ・外食）</option>
+          <option value="2">2 — 偏食・食べ過ぎ</option>
+          <option value="1">1 — ジャンクばかり</option>
+        </select>
+        <div class="hint" id="hfq"></div>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="fld"><label>カロリー (kcal)</label><input type="number" id="fcal" placeholder="2000"></div>
+      <div class="fld"><label>アルコール</label>
+        <select id="falc">
+          <option value="なし">なし</option>
+          <option value="少量">少量（1〜2杯）</option>
+          <option value="中程度">中程度（3〜4杯）</option>
+          <option value="多め">多め（5杯以上）</option>
+        </select>
+      </div>
+    </div>
+    <div class="row1"><div class="fld"><label>食事内容メモ</label><textarea id="fmemo" placeholder="朝: 〇〇、昼: 〇〇、夜: 〇〇"></textarea></div></div>
+    <div class="row1"><div class="fld"><label>サプリ記録</label><input type="text" id="fsup" placeholder="例: ビタミンD、プロテイン"></div></div>
+  </div>
+  <div class="card">
+    <div class="ct">💊 身体コンディション</div>
+    <div class="row2">
+      <div class="fld">
+        <label>体調スコア (1〜5)</label>
+        <select id="fco" onchange="sh(this,'hco',['','不調🤒','だるい','普通','良好','絶好調🔥'],['','r','r','','g','g'])">
+          <option value="">選択</option>
+          <option value="5">5 — 絶好調</option>
+          <option value="4">4 — 良好</option>
+          <option value="3">3 — 普通</option>
+          <option value="2">2 — だるい・頭痛など</option>
+          <option value="1">1 — 体調不良</option>
+        </select>
+        <div class="hint" id="hco"></div>
+      </div>
+      <div class="fld"><label>安静時心拍数 (bpm)</label><input type="number" id="fhr" placeholder="60" oninput="hrHint()"><div class="hint" id="hhr"></div></div>
+    </div>
+  </div>
+  <button class="btn" onclick="save()">✅ 保存する</button>
+</div>
+
+<!-- ダッシュボード -->
+<div class="pnl" id="p1">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <span style="font-size:12px;color:var(--t2);" id="ddate"></span>
+    <span style="font-size:11px;color:var(--t3);" id="dtotal"></span>
+  </div>
+  <div class="kgrid">
+    <div class="kpi"><div class="kl">最新体重</div><div class="kv" id="kw">—</div><div class="ks" id="kws">目標: 60kg</div></div>
+    <div class="kpi"><div class="kl">体脂肪率</div><div class="kv" id="kf">—</div><div class="ks" id="kfs">目標: 15%</div></div>
+    <div class="kpi"><div class="kl">BMI</div><div class="kv" id="kb">—</div><div class="ks" id="kbs">目標: 23.4</div></div>
+    <div class="kpi"><div class="kl">今週の運動</div><div class="kv g" id="ke">—</div><div class="ks">/ 7日</div></div>
+  </div>
+  <div class="card">
+    <div class="ct">🎯 目標進捗</div>
+    <div class="pbr"><div class="pbl"><span>体重</span><span id="pwl">76.2kg → 60kg</span></div><div class="pb"><div class="pf" id="pwf" style="width:0%"></div></div></div>
+    <div class="pbr"><div class="pbl"><span>体脂肪率</span><span id="pfl">未計測 → 15%</span></div><div class="pb"><div class="pf" id="pff" style="width:0%;background:var(--b)"></div></div></div>
+  </div>
+  <div class="card">
+    <div class="ct">📅 今週（月〜日）</div>
+    <div class="wdots">
+      <div><div class="wdl">月</div><span class="dot" id="d0"></span></div>
+      <div><div class="wdl">火</div><span class="dot" id="d1"></span></div>
+      <div><div class="wdl">水</div><span class="dot" id="d2"></span></div>
+      <div><div class="wdl">木</div><span class="dot" id="d3"></span></div>
+      <div><div class="wdl">金</div><span class="dot" id="d4"></span></div>
+      <div><div class="wdl">土</div><span class="dot" id="d5"></span></div>
+      <div><div class="wdl">日</div><span class="dot" id="d6"></span></div>
+    </div>
+    <div class="wss" id="wss"></div>
+  </div>
+  <div class="card"><div class="ct">📈 体重推移（30日）</div><div class="ch"><canvas id="cwc"></canvas></div></div>
+  <div class="card"><div class="ct">😴 睡眠 × 気分（14日）</div><div class="ch"><canvas id="cmc"></canvas></div></div>
+</div>
+
+<!-- 週次分析 -->
+<div class="pnl" id="p2">
+  <div class="ws2">
+    <button onclick="chWeek(-1)">‹</button>
+    <div class="wlb" id="wklb"></div>
+    <button onclick="chWeek(1)">›</button>
+  </div>
+  <div class="card"><div class="ct">📋 週次データ</div><div id="wkprev" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--t2);line-height:2;">「分析を実行」を押すと自動で読み込みます</div></div>
+  <button class="btn" id="abtn" onclick="analyze()">🤖 今週を分析する</button>
+  <div class="card" style="margin-top:10px;"><div class="ct">🧠 AI分析結果</div><div class="ao" id="aout">分析を実行すると、ここに結果が表示されます。</div></div>
+</div>
+
+<!-- 履歴 -->
+<div class="pnl" id="p3">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <span style="font-size:13px;color:var(--t2);">記録履歴</span>
+    <div style="display:flex;gap:6px;">
+      <button class="btn2" onclick="document.getElementById('fimp').click()">📤 インポート</button>
+      <button class="btn2" onclick="expCSV()">📥 エクスポート</button>
+    </div>
+  </div>
+  <input type="file" id="fimp" accept=".csv" style="display:none" onchange="impCSV(this)">
+  <div id="iprev" style="display:none;" class="ip">
+    <div class="ipt" id="isum"></div>
+    <div style="display:flex;gap:6px;">
+      <button class="btn" style="flex:1;margin-top:0;" onclick="doImp()">✅ インポートする</button>
+      <button class="btn2" onclick="cancelImp()">キャンセル</button>
+    </div>
+  </div>
+  <div id="hlist"></div>
+</div>
+
+<!-- 使い方 -->
+<div class="pnl" id="p5">
+  <div class="card">
+    <div class="ct">📖 このツールについて</div>
+    <p style="font-size:12px;color:var(--t2);line-height:1.8;">毎朝の健康データを記録し、ダッシュボードで進捗を確認、週次AI分析で改善ポイントを把握するためのツールです。データはすべてこのブラウザ内に保存されます。</p>
+  </div>
+
+  <div class="card">
+    <div class="ct">📝 記録タブ — 毎朝の入力（目安2〜3分）</div>
+    <div style="font-size:12px;color:var(--t2);line-height:2;">
+      <div style="margin-bottom:8px;"><span style="color:var(--g);font-weight:700;">体重・体脂肪率</span><br>体組成計で計測した値を入力。入力すると即座にBMIと目標までの差分が表示されます。</div>
+      <div style="margin-bottom:8px;"><span style="color:var(--g);font-weight:700;">睡眠</span><br>就寝・起床時刻を入力すると総睡眠時間を自動計算。睡眠の質は起床直後の主観で選択。</div>
+      <div style="margin-bottom:8px;"><span style="color:var(--g);font-weight:700;">気分スコア（1〜10）</span><br>1日全体の気分・充実度を数値化。高いほど良い状態。</div>
+      <div style="margin-bottom:8px;"><span style="color:var(--g);font-weight:700;">ストレスレベル（1〜5）</span><br>1が穏やか、5が限界。低いほど良い状態。</div>
+      <div style="margin-bottom:8px;"><span style="color:var(--g);font-weight:700;">運動</span><br>「運動した」をチェックすると種目入力欄が展開。種類・時間・回数を最大5種目まで記録可能。</div>
+      <div style="margin-bottom:8px;"><span style="color:var(--g);font-weight:700;">食事の質（1〜5）</span><br>5がバランス◎・暴食なし、1がジャンク食のみ。その日の食事全体を総合評価。</div>
+      <div><span style="color:var(--g);font-weight:700;">体調スコア（1〜5）</span><br>5が絶好調、1が体調不良。身体的なコンディションを評価。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">📊 ダッシュボードタブ — 進捗の確認</div>
+    <div style="font-size:12px;color:var(--t2);line-height:2;">
+      <div style="margin-bottom:8px;"><span style="color:var(--b);font-weight:700;">KPIカード（4つ）</span><br>最新の体重・体脂肪率・BMI・今週の運動日数を一目で確認。目標との差分も表示。</div>
+      <div style="margin-bottom:8px;"><span style="color:var(--b);font-weight:700;">目標進捗バー</span><br>開始体重76.2kgから目標60kgまでの達成率をバーで可視化。</div>
+      <div style="margin-bottom:8px;"><span style="color:var(--b);font-weight:700;">今週のドット</span><br>月〜日の記録状況をドットで表示。緑が記録済み、グレーが未記録。</div>
+      <div style="margin-bottom:8px;"><span style="color:var(--b);font-weight:700;">体重推移グラフ（30日）</span><br>過去30日の体重変化を折れ線グラフで表示。点線が目標値。</div>
+      <div><span style="color:var(--b);font-weight:700;">睡眠×気分グラフ（14日）</span><br>睡眠時間（青）と気分スコア（ピンク）の2軸グラフ。相関パターンを発見できます。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">🤖 週次分析タブ — AIによる振り返り</div>
+    <div style="font-size:12px;color:var(--t2);line-height:2;">
+      <div style="margin-bottom:8px;">毎週日曜に実行するのがおすすめです。</div>
+      <div style="margin-bottom:8px;"><span style="color:var(--p);font-weight:700;">① 週を選択</span><br>「‹」「›」で過去の週も遡って分析できます。</div>
+      <div style="margin-bottom:8px;"><span style="color:var(--p);font-weight:700;">② 「今週を分析する」を押す</span><br>ブラウザ内のデータを自動読み込みし、Claude APIに送信して分析します。</div>
+      <div><span style="color:var(--p);font-weight:700;">③ 分析結果の見方</span><br>総合評価（A〜D）・良かった点・改善ポイント・睡眠×気分の傾向・来週のアドバイスが表示されます。週次分析にはClaude APIキーが必要です（設定タブで入力）。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">📋 履歴タブ — データ管理</div>
+    <div style="font-size:12px;color:var(--t2);line-height:2;">
+      <div style="margin-bottom:8px;"><span style="color:var(--o);font-weight:700;">CSVエクスポート</span><br>全記録をCSVファイルとして書き出します。機種変更前に必ず実行してください。</div>
+      <div style="margin-bottom:8px;"><span style="color:var(--o);font-weight:700;">CSVインポート</span><br>エクスポートしたCSVを読み込みます。機種変更後の復元に使用します。インポート前に件数を確認してから実行できます。</div>
+      <div><span style="color:var(--o);font-weight:700;">個別削除</span><br>各レコードの🗑ボタンで特定日のデータを削除できます。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">⚙️ 設定タブ</div>
+    <div style="font-size:12px;color:var(--t2);line-height:2;">
+      <div style="margin-bottom:8px;"><span style="color:var(--g);font-weight:700;">Claude APIキー</span><br>週次分析に必要。console.anthropic.comで取得。初回5ドル（約750円）のチャージが必要ですが、月の消費は数円程度です。</div>
+      <div style="margin-bottom:8px;"><span style="color:var(--g);font-weight:700;">目標値・プロフィール</span><br>身長・開始体重・目標体重・目標体脂肪率を設定。ダッシュボードの進捗計算に使用します。</div>
+      <div><span style="color:var(--r);font-weight:700;">データ削除</span><br>全データを削除します。この操作は取り消せません。削除前に必ずCSVエクスポートしてください。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">💾 データ保存について</div>
+    <div style="font-size:12px;color:var(--t2);line-height:2;">
+      <div style="margin-bottom:8px;">データはブラウザの<strong style="color:var(--t);">localStorage</strong>に保存されています。インターネット上には一切送信されません（週次分析のデータ除く）。</div>
+      <div style="margin-bottom:8px;">⚠️ ブラウザのキャッシュ・履歴を「全て削除」するとデータが消えることがあります。定期的なCSVエクスポートを推奨します。</div>
+      <div>📱 スマホで使う場合は、同じURLをブラウザで開き、設定タブでAPIキーを再入力してください（初回のみ）。</div>
+    </div>
+  </div>
+</div>
+
+<!-- 設定 -->
+<div class="pnl" id="p4">
+  <div class="card">
+    <div class="ct">🤖 Claude API（週次分析用）</div>
+    <div class="fld" style="margin-bottom:10px;">
+      <label>Anthropic API Key</label>
+      <input type="password" id="sapikey" placeholder="sk-ant-xxxxxxxxxxxx">
+      <div style="font-size:11px;color:var(--t3);margin-top:4px;">console.anthropic.com で取得。週次分析でのみ使用。</div>
+    </div>
+    <button class="btn2" onclick="saveSt()">保存する</button>
+  </div>
+  <div class="card">
+    <div class="ct">⚖️ 目標値・プロフィール</div>
+    <div class="row2">
+      <div class="fld"><label>身長 (cm)</label><input type="number" id="sh" value="160"></div>
+      <div class="fld"><label>開始体重 (kg)</label><input type="number" id="ssw" value="76.2"></div>
+    </div>
+    <div class="row2">
+      <div class="fld"><label>目標体重 (kg)</label><input type="number" id="sgw" value="60"></div>
+      <div class="fld"><label>目標体脂肪率 (%)</label><input type="number" id="sgf" value="15"></div>
+    </div>
+    <button class="btn2" onclick="saveSt()">保存する</button>
+  </div>
+  <div class="card">
+    <div class="ct" style="color:var(--r);">⚠️ データ管理</div>
+    <p style="font-size:12px;color:var(--t2);margin-bottom:10px;line-height:1.6;">データはこのブラウザ内にのみ保存されています。機種変更前に必ずCSVエクスポートを行ってください。</p>
+    <button class="btn3" onclick="clearAll()">すべてのデータを削除する</button>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var LK = 'hl_v2', SK = 'hs_v2';
+var logs = [], st = {apikey:'',h:160,sw:76.2,gw:60,gf:15}, wo = 0;
+var wch = null, mch = null, pend = [];
+
+function init() {
+  try { var l=localStorage.getItem(LK); if(l) logs=JSON.parse(l); } catch(e){}
+  try { var s=localStorage.getItem(SK); if(s) st=Object.assign(st,JSON.parse(s)); } catch(e){}
+  document.getElementById('sapikey').value = st.apikey||'';
+  document.getElementById('sh').value = st.h;
+  document.getElementById('ssw').value = st.sw;
+  document.getElementById('sgw').value = st.gw;
+  document.getElementById('sgf').value = st.gf;
+  setDate();
+  setInterval(setDate, 30000);
+  updWkLb();
+}
+
+function setDate() {
+  var d=new Date(), dy=['日','月','火','水','木','金','土'];
+  document.getElementById('hdate').textContent = (d.getMonth()+1)+'/'+(d.getDate())+'（'+dy[d.getDay()]+'）';
+}
+
+function go(n) {
+  for(var i=0;i<6;i++){
+    document.getElementById('tb'+i).className='tab'+(i==n?' on':'');
+    document.getElementById('p'+i).className='pnl'+(i==n?' on':'');
+  }
+  if(n==1) rdDash();
+  if(n==3) rdHist();
+  if(n==2) updWkLb();
+}
+
+function saveSt() {
+  st.apikey = document.getElementById('sapikey').value.trim();
+  st.h = parseFloat(document.getElementById('sh').value)||160;
+  st.sw = parseFloat(document.getElementById('ssw').value)||76.2;
+  st.gw = parseFloat(document.getElementById('sgw').value)||60;
+  st.gf = parseFloat(document.getElementById('sgf').value)||15;
+  localStorage.setItem(SK, JSON.stringify(st));
+  toast('✅ 設定を保存しました','ok');
+}
+
+function saveLogs() { localStorage.setItem(LK, JSON.stringify(logs)); }
+
+function fd(d) {
+  return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+}
+
+function wHint() {
+  var w=parseFloat(document.getElementById('fw').value), el=document.getElementById('hw');
+  if(isNaN(w)){el.textContent='';return;}
+  var h=st.h/100, bmi=w/(h*h), d=w-st.gw;
+  el.textContent='BMI: '+bmi.toFixed(1)+' ／ 目標まで: '+(d>0?'+':'')+d.toFixed(1)+' kg';
+  el.className='hint '+(d<=0?'g':d<=5?'w':'r');
+}
+
+function fHint() {
+  var f=parseFloat(document.getElementById('ff').value), el=document.getElementById('hf');
+  if(isNaN(f)){el.textContent='';return;}
+  var d=f-st.gf;
+  el.textContent='目標まで: '+(d>0?'+':'')+d.toFixed(1)+'%';
+  el.className='hint '+(d<=0?'g':d<=5?'w':'r');
+}
+
+function hrHint() {
+  var hr=parseInt(document.getElementById('fhr').value), el=document.getElementById('hhr');
+  if(isNaN(hr)){el.textContent='';return;}
+  if(hr<50){el.textContent='アスリートレベル💚';el.className='hint g';}
+  else if(hr<60){el.textContent='優良(50-59)';el.className='hint g';}
+  else if(hr<70){el.textContent='正常(60-69)';el.className='hint';}
+  else if(hr<80){el.textContent='やや高め⚠️';el.className='hint w';}
+  else{el.textContent='高め🚨';el.className='hint r';}
+}
+
+function sh(sel,hid,lbs,cls) {
+  var v=parseInt(sel.value), el=document.getElementById(hid);
+  if(!v){el.textContent='';return;}
+  el.textContent=lbs[v]||'';
+  el.className='hint '+(cls[v]||'');
+}
+
+function togEx() {
+  document.getElementById('exarea').style.display=document.getElementById('fex').checked?'block':'none';
+}
+
+function addEx() {
+  var c=document.getElementById('exrows');
+  if(c.querySelectorAll('.ex-row').length>=5){toast('最大5種目まで','');return;}
+  var d=document.createElement('div'); d.className='ex-row';
+  d.innerHTML='<input type="text" class="ex-i etype" placeholder="例: 筋トレ"><input type="number" class="ex-i emin" placeholder="30"><input type="text" class="ex-i ereps" placeholder="3×10"><button class="ex-del" onclick="this.closest(\'.ex-row\').remove()">✕</button>';
+  c.appendChild(d);
+  if(c.querySelectorAll('.ex-row').length>=5){var b=document.getElementById('addbtn');b.disabled=true;b.style.opacity='0.3';}
+}
+
+function cslp(bed,wk) {
+  if(!bed||!wk) return null;
+  var bp=bed.split(':').map(Number), wp=wk.split(':').map(Number);
+  var m=(wp[0]*60+wp[1])-(bp[0]*60+bp[1]);
+  if(m<0)m+=1440;
+  return Math.round(m/60*10)/10;
+}
+
+function save() {
+  var today=fd(new Date());
+  var ex=[], tm=0;
+  document.querySelectorAll('#exrows .ex-row').forEach(function(r){
+    var t=(r.querySelector('.etype')||{}).value||'';
+    var m=parseInt((r.querySelector('.emin')||{}).value)||0;
+    var rp=(r.querySelector('.ereps')||{}).value||'';
+    if(t.trim()){ex.push({type:t.trim(),mins:m,reps:rp.trim()});tm+=m;}
+  });
+  var log={
+    date:today,
+    weight:parseFloat(document.getElementById('fw').value)||null,
+    fat:parseFloat(document.getElementById('ff').value)||null,
+    bed:document.getElementById('fbed').value,
+    wake:document.getElementById('fwk').value,
+    sleepH:cslp(document.getElementById('fbed').value,document.getElementById('fwk').value),
+    sleepQ:parseInt(document.getElementById('fsq').value)||null,
+    mood:parseInt(document.getElementById('fmo').value)||null,
+    stress:parseInt(document.getElementById('fst').value)||null,
+    med:document.getElementById('fmed').checked,
+    exercised:document.getElementById('fex').checked,
+    exercises:ex, exMin:tm,
+    steps:parseInt(document.getElementById('fst2').value)||null,
+    water:parseFloat(document.getElementById('fwt').value)||null,
+    foodQ:parseInt(document.getElementById('ffq').value)||null,
+    cal:parseInt(document.getElementById('fcal').value)||null,
+    alc:document.getElementById('falc').value,
+    memo:document.getElementById('fmemo').value,
+    supps:document.getElementById('fsup').value,
+    cond:parseInt(document.getElementById('fco').value)||null,
+    hr:parseInt(document.getElementById('fhr').value)||null,
+    ts:new Date().toISOString()
+  };
+  var idx=logs.findIndex(function(l){return l.date===today;});
+  if(idx>=0){
+    if(!confirm(today+' のデータが既にあります。上書きしますか？'))return;
+    logs[idx]=log;
+    toast('✅ 上書き保存しました','ok');
+  } else {
+    logs.push(log);
+    toast('✅ 保存しました！','ok');
+  }
+  saveLogs();
+  resetF();
+}
+
+function resetF() {
+  ['fw','ff','fst2','fwt','fcal','fmemo','fsup','fhr'].forEach(function(id){
+    var el=document.getElementById(id); if(el)el.value='';
+  });
+  ['fsq','fmo','fst','ffq','fco'].forEach(function(id){
+    var el=document.getElementById(id); if(el)el.value='';
+  });
+  ['hw','hf','hsq','hmo','hst','hfq','hco','hhr'].forEach(function(id){
+    var el=document.getElementById(id); if(el)el.textContent='';
+  });
+  document.getElementById('fmed').checked=false;
+  document.getElementById('fex').checked=false;
+  document.getElementById('falc').value='なし';
+  document.getElementById('exarea').style.display='none';
+  var c=document.getElementById('exrows');
+  c.querySelectorAll('.ex-row').forEach(function(r,i){
+    if(i===0)r.querySelectorAll('input').forEach(function(inp){inp.value='';});
+    else r.remove();
+  });
+  var b=document.getElementById('addbtn');b.disabled=false;b.style.opacity='1';
+}
+
+function getMon(d) {
+  var dt=new Date(d);dt.setHours(0,0,0,0);
+  var day=dt.getDay();
+  dt.setDate(dt.getDate()+(day===0?-6:1-day));
+  return dt;
+}
+
+function getLogs(days) {
+  var s=new Date();s.setDate(s.getDate()-days);
+  var ss=fd(s);
+  return logs.filter(function(l){return l.date>=ss;}).sort(function(a,b){return a.date.localeCompare(b.date);});
+}
+
+function avg(arr) {
+  if(!arr.length)return null;
+  return arr.reduce(function(a,b){return a+b;},0)/arr.length;
+}
+
+function rdDash() {
+  var today=new Date();
+  document.getElementById('ddate').textContent='今日: '+fd(today);
+  document.getElementById('dtotal').textContent='累計 '+logs.length+' 日分';
+  var r30=getLogs(30);
+  var lw=[].concat(r30).reverse().find(function(l){return l.weight;});
+  var lf=[].concat(r30).reverse().find(function(l){return l.fat;});
+  var h=st.h/100;
+  if(lw){
+    var w=lw.weight, bmi=w/(h*h), d=w-st.gw;
+    document.getElementById('kw').textContent=w.toFixed(1)+' kg';
+    document.getElementById('kws').textContent='目標まで: '+(d>0?'+':'')+d.toFixed(1)+' kg';
+    document.getElementById('kws').className='ks '+(d<=0?'g':'r');
+    document.getElementById('kb').textContent=bmi.toFixed(1);
+    document.getElementById('kbs').textContent=bmi<18.5?'低体重':bmi<25?'正常':'過体重';
+    document.getElementById('kbs').className='ks '+(bmi<25?'g':'r');
+    var pct=Math.min(100,Math.max(0,(st.sw-w)/(st.sw-st.gw)*100));
+    document.getElementById('pwf').style.width=pct.toFixed(0)+'%';
+    document.getElementById('pwl').textContent=w.toFixed(1)+'kg → '+st.gw+'kg';
+  }
+  if(lf){
+    var f=lf.fat, df=f-st.gf;
+    document.getElementById('kf').textContent=f.toFixed(1)+'%';
+    document.getElementById('kfs').textContent='目標まで: '+(df>0?'+':'')+df.toFixed(1)+'%';
+    document.getElementById('kfs').className='ks '+(df<=0?'g':'r');
+    var pf=Math.min(100,Math.max(0,(20-f)/(20-st.gf)*100));
+    document.getElementById('pff').style.width=pf.toFixed(0)+'%';
+    document.getElementById('pfl').textContent=f.toFixed(1)+'% → '+st.gf+'%';
+  }
+  var mon=getMon(today);
+  var exc=0;
+  for(var i=0;i<7;i++){
+    var dd=new Date(mon);dd.setDate(mon.getDate()+i);
+    var ds=fd(dd);
+    var lg=logs.find(function(l){return l.date===ds;});
+    var dot=document.getElementById('d'+i);
+    if(lg){dot.className='dot on';if(lg.exercised)exc++;}
+    else dot.className='dot';
+  }
+  document.getElementById('ke').textContent=exc;
+  var monStr=fd(mon),sunD=new Date(mon);sunD.setDate(mon.getDate()+6);
+  var wkl=logs.filter(function(l){return l.date>=monStr&&l.date<=fd(sunD);});
+  var as=avg(wkl.map(function(l){return l.sleepH;}).filter(Boolean));
+  var am=avg(wkl.map(function(l){return l.mood;}).filter(Boolean));
+  var aw=avg(wkl.map(function(l){return l.water;}).filter(Boolean));
+  document.getElementById('wss').innerHTML=
+    '<div class="ws"><div class="wsl">平均睡眠</div><div class="wsv" style="color:var(--b)">'+(as?as.toFixed(1)+'h':'—')+'</div></div>'+
+    '<div class="ws"><div class="wsl">平均気分</div><div class="wsv" style="color:var(--p)">'+(am?am.toFixed(1):'—')+'</div></div>'+
+    '<div class="ws"><div class="wsl">平均水分</div><div class="wsv" style="color:var(--o)">'+(aw?aw.toFixed(1)+'L':'—')+'</div></div>';
+  var wl=r30.filter(function(l){return l.weight;});
+  if(wch)wch.destroy();
+  wch=new Chart(document.getElementById('cwc').getContext('2d'),{type:'line',data:{labels:wl.map(function(l){return l.date.slice(5);}),datasets:[{data:wl.map(function(l){return l.weight;}),borderColor:'#7fff6e',backgroundColor:'rgba(127,255,110,.08)',borderWidth:2,pointRadius:3,tension:.3,fill:true,label:'体重(kg)'},{data:wl.map(function(){return st.gw;}),borderColor:'rgba(127,255,110,.3)',borderWidth:1,borderDash:[4,4],pointRadius:0,label:'目標'}]},options:co()});
+  var m14=getLogs(14);
+  if(mch)mch.destroy();
+  mch=new Chart(document.getElementById('cmc').getContext('2d'),{type:'line',data:{labels:m14.map(function(l){return l.date.slice(5);}),datasets:[{data:m14.map(function(l){return l.mood;}),borderColor:'#ff7eb3',borderWidth:2,pointRadius:3,tension:.3,fill:false,label:'気分(/10)',yAxisID:'y'},{data:m14.map(function(l){return l.sleepH;}),borderColor:'#4fc3f7',borderWidth:2,pointRadius:3,tension:.3,fill:false,label:'睡眠(h)',yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{color:'#8b8f9e',font:{size:10},boxWidth:12}}},scales:{x:{ticks:{color:'#555a6b',font:{size:10}},grid:{color:'#2a2d35'}},y:{ticks:{color:'#ff7eb3',font:{size:10}},grid:{color:'#2a2d35'},min:0,max:10,position:'left'},y1:{ticks:{color:'#4fc3f7',font:{size:10}},grid:{display:false},min:0,max:12,position:'right'}}}});
+}
+
+function co() {
+  return{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{color:'#8b8f9e',font:{size:10},boxWidth:12}}},scales:{x:{ticks:{color:'#555a6b',font:{size:10}},grid:{color:'#2a2d35'}},y:{ticks:{color:'#8b8f9e',font:{size:10}},grid:{color:'#2a2d35'}}}};
+}
+
+function rdHist() {
+  var el=document.getElementById('hlist');
+  if(!logs.length){el.innerHTML='<p style="text-align:center;color:var(--t3);padding:40px 0;">まだ記録がありません</p>';return;}
+  var s=[].concat(logs).sort(function(a,b){return b.date.localeCompare(a.date);});
+  el.innerHTML=s.map(function(l){
+    return '<div class="hi"><div><div class="hid">'+l.date+'</div><div class="hii">'+(l.weight?l.weight+'kg':'—')+' ／ 睡眠'+(l.sleepH?l.sleepH+'h':'—')+' ／ 気分'+(l.mood||'—')+' ／ 運動'+(l.exercised?'✓':'✗')+'</div></div><button class="hib" onclick="delLog(\''+l.date+'\')">🗑</button></div>';
+  }).join('');
+}
+
+function delLog(date) {
+  if(!confirm(date+' のデータを削除しますか？'))return;
+  logs=logs.filter(function(l){return l.date!==date;});
+  saveLogs();rdHist();toast('削除しました','');
+}
+
+function expCSV() {
+  if(!logs.length){toast('データがありません','ng');return;}
+  var hd=['日付','体重kg','体脂肪率%','就寝','起床','睡眠時間h','睡眠の質','気分','ストレス','瞑想','運動有無','運動内容','運動時間分','歩数','水分L','食事の質','カロリー','アルコール','食事メモ','サプリ','体調','心拍数bpm'];
+  var rows=[].concat(logs).sort(function(a,b){return a.date.localeCompare(b.date);}).map(function(l){
+    return [l.date,l.weight||'',l.fat||'',l.bed||'',l.wake||'',l.sleepH||'',l.sleepQ||'',l.mood||'',l.stress||'',l.med?'1':'0',l.exercised?'1':'0',(l.exercises||[]).map(function(e){return e.type+(e.mins?'('+e.mins+'分)':'')+(e.reps?'×'+e.reps:'');}).join(' / '),l.exMin||'',l.steps||'',l.water||'',l.foodQ||'',l.cal||'',l.alc||'','"'+(l.memo||'').replace(/"/g,'""')+'"','"'+(l.supps||'').replace(/"/g,'""')+'"',l.cond||'',l.hr||''].join(',');
+  });
+  var csv='\uFEFF'+[hd.join(',')].concat(rows).join('\n');
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download='health_log_'+fd(new Date())+'.csv';
+  a.click();
+  toast('✅ エクスポートしました','ok');
+}
+
+function parseCSVLine(line) {
+  var res=[],cur='',inQ=false;
+  for(var i=0;i<line.length;i++){
+    var c=line[i];
+    if(c==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else{inQ=!inQ;}}
+    else if(c===','&&!inQ){res.push(cur);cur='';}
+    else cur+=c;
+  }
+  res.push(cur);return res;
+}
+
+function impCSV(input) {
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var text=e.target.result.replace(/^\uFEFF/,'');
+      var lines=text.split('\n').filter(function(l){return l.trim();});
+      if(lines.length<2){toast('データが見つかりません','ng');return;}
+      var hdrs=lines[0].split(',');
+      var idx={};
+      ['日付','体重kg','体脂肪率%','就寝','起床','睡眠時間h','睡眠の質','気分','ストレス','瞑想','運動有無','運動内容','運動時間分','歩数','水分L','食事の質','カロリー','アルコール','食事メモ','サプリ','体調','心拍数bpm'].forEach(function(h){
+        var f=hdrs.findIndex(function(x){return x.trim()===h;});
+        if(f>=0)idx[h]=f;
+      });
+      if(idx['日付']===undefined){toast('CSVの形式が正しくありません','ng');return;}
+      pend=[];
+      for(var i=1;i<lines.length;i++){
+        var cols=parseCSVLine(lines[i]);
+        var date=(cols[idx['日付']]||'').trim();
+        if(!date||!/^\d{4}-\d{2}-\d{2}$/.test(date))continue;
+        var g=function(k){return idx[k]!==undefined?(cols[idx[k]]||'').trim():'';};
+        var gn=function(k){var v=parseFloat(g(k));return isNaN(v)?null:v;};
+        var gi=function(k){var v=parseInt(g(k));return isNaN(v)?null:v;};
+        var exStr=g('運動内容');
+        var exArr=exStr?exStr.split(' / ').map(function(s){
+          var m=s.match(/^(.+?)(?:\((\d+)分\))?(?:×(.+))?$/);
+          return m?{type:m[1].trim(),mins:parseInt(m[2])||0,reps:m[3]||''}:{type:s,mins:0,reps:''};
+        }).filter(function(e){return e.type;}):[]; 
+        pend.push({date:date,weight:gn('体重kg'),fat:gn('体脂肪率%'),bed:g('就寝'),wake:g('起床'),sleepH:gn('睡眠時間h'),sleepQ:gi('睡眠の質'),mood:gi('気分'),stress:gi('ストレス'),med:g('瞑想')==='1',exercised:g('運動有無')==='1',exercises:exArr,exMin:gi('運動時間分'),steps:gi('歩数'),water:gn('水分L'),foodQ:gi('食事の質'),cal:gi('カロリー'),alc:g('アルコール')||'なし',memo:g('食事メモ'),supps:g('サプリ'),cond:gi('体調'),hr:gi('心拍数bpm'),ts:new Date().toISOString()});
+      }
+      if(!pend.length){toast('有効なデータが見つかりません','ng');return;}
+      var ov=pend.filter(function(l){return logs.find(function(e){return e.date===l.date;});}).length;
+      var nw=pend.length-ov;
+      document.getElementById('isum').innerHTML='読み込んだデータ: <strong style="color:var(--g)">'+pend.length+'件</strong><br>新規追加: <strong style="color:var(--g)">'+nw+'件</strong>'+(ov?'<br>上書き: <strong style="color:var(--o)">'+ov+'件</strong>':'');
+      document.getElementById('iprev').style.display='block';
+    }catch(err){toast('読み込みエラー','ng');}
+    input.value='';
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
+function doImp() {
+  pend.forEach(function(imp){
+    var i=logs.findIndex(function(l){return l.date===imp.date;});
+    if(i>=0)logs[i]=imp;else logs.push(imp);
+  });
+  saveLogs();pend=[];
+  document.getElementById('iprev').style.display='none';
+  toast('✅ インポート完了','ok');rdHist();
+}
+
+function cancelImp() {
+  pend=[];document.getElementById('iprev').style.display='none';
+}
+
+function clearAll() {
+  if(!confirm('すべてのデータを削除します。取り消せません。本当に削除しますか？'))return;
+  logs=[];saveLogs();toast('削除しました','');rdHist();
+}
+
+function updWkLb() {
+  var mon=getMon(new Date());
+  mon.setDate(mon.getDate()+wo*7);
+  var sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  document.getElementById('wklb').textContent=(mon.getMonth()+1)+'/'+(mon.getDate())+'（月）〜'+(sun.getMonth()+1)+'/'+(sun.getDate())+'（日）';
+}
+
+function chWeek(d) {
+  wo+=d;if(wo>0)wo=0;updWkLb();
+}
+
+async function analyze() {
+  if(!st.apikey){toast('設定タブでClaude APIキーを入力してください','ng');return;}
+  var mon=getMon(new Date());mon.setDate(mon.getDate()+wo*7);
+  var sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  var ms=fd(mon),ss=fd(sun);
+  var wl=logs.filter(function(l){return l.date>=ms&&l.date<=ss;}).sort(function(a,b){return a.date.localeCompare(b.date);});
+  if(!wl.length){toast('この週のデータがありません','ng');return;}
+  var dys=['月','火','水','木','金','土','日'];
+  var prev=wl.map(function(l){
+    var d=new Date(l.date),dy=dys[(d.getDay()+6)%7];
+    var ex=(l.exercises||[]).map(function(e){return e.type+(e.mins?'('+e.mins+'分)':'')+(e.reps?'×'+e.reps:'');}).join('/')||'なし';
+    return dy+'('+l.date.slice(5)+'): 体重'+(l.weight||'—')+'kg 睡眠'+(l.sleepH||'—')+'h(質'+(l.sleepQ||'—')+') 気分'+(l.mood||'—')+'/10 ストレス'+(l.stress||'—')+'/5 体調'+(l.cond||'—')+'/5 運動['+ex+'] 水分'+(l.water||'—')+'L 食事の質'+(l.foodQ||'—')+'/5';
+  }).join('\n');
+  document.getElementById('wkprev').textContent=prev;
+  var btn=document.getElementById('abtn');
+  btn.disabled=true;btn.innerHTML='<span class="sp"></span>分析中...';
+  document.getElementById('aout').textContent='分析中...';
+  var prompt='あなたは健康アドバイザーです。以下は26歳男性（身長'+st.h+'cm）の'+(mon.getMonth()+1)+'/'+(mon.getDate())+'〜'+(sun.getMonth()+1)+'/'+(sun.getDate())+'の健康ログです。\n\n【目標】体重'+st.gw+'kg（開始'+st.sw+'kgから減量中）、体脂肪率'+st.gf+'%\n\n【今週のデータ】\n'+prev+'\n\n以下の形式で分析してください（合計300字以内）：\n\n【総合評価】A/B/C/D（理由1行）\n【良かった点】具体的に1〜2点\n【改善ポイント】来週の最重要アクション1つ\n【睡眠×気分の傾向】気づいたパターン\n【来週のひと言アドバイス】';
+  try{
+    var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':st.apikey,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    var data=await res.json();
+    var txt=data.content&&data.content[0]?data.content[0].text:'エラー: 応答なし';
+    document.getElementById('aout').innerHTML=txt.replace(/【(.+?)】/g,'<h3>【$1】</h3>').replace(/\n/g,'<br>');
+  }catch(e){document.getElementById('aout').textContent='エラー: '+e.message;}
+  btn.disabled=false;btn.innerHTML='🤖 今週を分析する';
+}
+
+var _tt;
+function toast(msg,type){
+  var el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast on '+(type||'');
+  clearTimeout(_tt);_tt=setTimeout(function(){el.className='toast';},2600);
+}
+
+init();
+</script>
+</body>
+</html>
